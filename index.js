@@ -15,7 +15,7 @@
  */
 module.exports = createGraph;
 
-var eventify = require('ngraph.events');
+var eventify = require("ngraph.events");
 
 /**
  * Creates a new graph
@@ -27,13 +27,13 @@ function createGraph(options) {
   // array is used to speed up all links enumeration. This is inefficient
   // in terms of memory, but simplifies coding.
   options = options || {};
-  if ('uniqueLinkId' in options) {
+  if ("uniqueLinkId" in options) {
     console.warn(
-      'ngraph.graph: Starting from version 0.14 `uniqueLinkId` is deprecated.\n' +
-      'Use `multigraph` option instead\n',
-      '\n',
-      'Note: there is also change in default behavior: From now on each graph\n'+
-      'is considered to be not a multigraph by default (each edge is unique).'
+      "ngraph.graph: Starting from version 0.14 `uniqueLinkId` is deprecated.\n" +
+        "Use `multigraph` option instead\n",
+      "\n",
+      "Note: there is also change in default behavior: From now own each graph\n" +
+        "is considered to be not a multigraph by default (each edge is unique)."
     );
 
     options.multigraph = options.uniqueLinkId;
@@ -44,16 +44,14 @@ function createGraph(options) {
   // we can save some memory and CPU (18% faster for non-multigraph);
   if (options.multigraph === undefined) options.multigraph = false;
 
-  var nodes = typeof Object.create === 'function' ? Object.create(null) : {},
+  var nodes = typeof Object.create === "function" ? Object.create(null) : {},
     links = [],
     // Hash of multi-edges. Used to track ids of edges between same nodes
     multiEdges = {},
     nodesCount = 0,
     suspendEvents = 0,
-
     forEachNode = createNodeIterator(),
     createLink = options.multigraph ? createUniqueLink : createSingleLink,
-
     // Our graph API provides means to listen to graph changes. Users can subscribe
     // to be notified about changes in the graph by using `on` method. However
     // in some cases they don't use it. To avoid unnecessary memory consumption
@@ -99,6 +97,16 @@ function createGraph(options) {
     addLink: addLink,
 
     /**
+     * Updates link data.
+     *
+     * @param linkId - Link identifier to use to look up link
+     * @param [data] - additional data to be set on the new link;
+     *
+     * @returns {link} The modified link
+     */
+    changeLink: changeLink,
+
+    /**
      * Removes link from the graph. If link does not exist does nothing.
      *
      * @param link - object returned by addLink() or getLinks() methods.
@@ -131,14 +139,14 @@ function createGraph(options) {
      *
      * @return number of nodes in the graph.
      */
-    getNodesCount: function () {
+    getNodesCount: function() {
       return nodesCount;
     },
 
     /**
      * Gets total number of links in the graph.
      */
-    getLinksCount: function () {
+    getLinksCount: function() {
       return links.length;
     },
 
@@ -212,7 +220,7 @@ function createGraph(options) {
 
     /**
      * Detects whether there is a node with given id
-     * 
+     *
      * Operation complexity is O(1)
      * NOTE: this function is synonim for getNode()
      *
@@ -276,7 +284,7 @@ function createGraph(options) {
 
   function addNode(nodeId, data) {
     if (nodeId === undefined) {
-      throw new Error('Invalid node identifier');
+      throw new Error("Invalid node identifier");
     }
 
     enterModification();
@@ -285,10 +293,10 @@ function createGraph(options) {
     if (!node) {
       node = new Node(nodeId, data);
       nodesCount++;
-      recordNodeChange(node, 'add');
+      recordNodeChange(node, "add");
     } else {
       node.data = data;
-      recordNodeChange(node, 'update');
+      recordNodeChange(node, "update");
     }
 
     nodes[nodeId] = node;
@@ -312,7 +320,7 @@ function createGraph(options) {
     var prevLinks = node.links;
     if (prevLinks) {
       node.links = null;
-      for(var i = 0; i < prevLinks.length; ++i) {
+      for (var i = 0; i < prevLinks.length; ++i) {
         removeLink(prevLinks[i]);
       }
     }
@@ -320,13 +328,31 @@ function createGraph(options) {
     delete nodes[nodeId];
     nodesCount--;
 
-    recordNodeChange(node, 'remove');
+    recordNodeChange(node, "remove");
 
     exitModification();
 
     return true;
   }
+  function updateLinkData(linkId, data) {
+    // enterModification();
+    console.log(links);
+    // exitModification();
+  }
 
+  function changeLink(linkId, data) {
+    enterModification();
+
+    var link = getLinkById(linkId);
+
+    link.data = data;
+
+    recordLinkChange(link, "update");
+
+    exitModification();
+
+    return link;
+  }
 
   function addLink(fromId, toId, data) {
     enterModification();
@@ -345,7 +371,7 @@ function createGraph(options) {
       addLinkToNode(toNode, link);
     }
 
-    recordLinkChange(link, 'add');
+    recordLinkChange(link, "add");
 
     exitModification();
 
@@ -359,13 +385,15 @@ function createGraph(options) {
 
   function createUniqueLink(fromId, toId, data) {
     // TODO: Get rid of this method.
+
     var linkId = makeLinkId(fromId, toId);
+
     var isMultiEdge = multiEdges.hasOwnProperty(linkId);
     if (isMultiEdge || getLink(fromId, toId)) {
       if (!isMultiEdge) {
         multiEdges[linkId] = 0;
       }
-      var suffix = '@' + (++multiEdges[linkId]);
+      var suffix = "@" + ++multiEdges[linkId];
       linkId = makeLinkId(fromId + suffix, toId + suffix);
     }
 
@@ -407,11 +435,27 @@ function createGraph(options) {
       }
     }
 
-    recordLinkChange(link, 'remove');
+    recordLinkChange(link, "remove");
 
     exitModification();
 
     return true;
+  }
+
+  function getLinkById(linkId) {
+    let [fromId, toId] = linkId.split(/@\d*⚯|⚯|@\d*/);
+
+    var node = getNode(fromId);
+
+    if (!node || !node.links) {
+      return null;
+    }
+    for (var idx in node.links) {
+      if (node.links[idx].id === linkId) {
+        return node.links[idx];
+      }
+    }
+    return null;
   }
 
   function getLink(fromNodeId, toNodeId) {
@@ -442,7 +486,7 @@ function createGraph(options) {
 
   function forEachLink(callback) {
     var i, length;
-    if (typeof callback === 'function') {
+    if (typeof callback === "function") {
       for (i = 0, length = links.length; i < length; ++i) {
         callback(links[i]);
       }
@@ -452,7 +496,7 @@ function createGraph(options) {
   function forEachLinkedNode(nodeId, callback, oriented) {
     var node = getNode(nodeId);
 
-    if (node && node.links && typeof callback === 'function') {
+    if (node && node.links && typeof callback === "function") {
       if (oriented) {
         return forEachOrientedLink(node.links, nodeId, callback);
       } else {
@@ -499,7 +543,7 @@ function createGraph(options) {
   function exitModificationReal() {
     suspendEvents -= 1;
     if (suspendEvents === 0 && changes.length > 0) {
-      graphPart.fire('changed', changes);
+      graphPart.fire("changed", changes);
       changes.length = 0;
     }
   }
@@ -512,7 +556,7 @@ function createGraph(options) {
   }
 
   function objectKeysIterator(callback) {
-    if (typeof callback !== 'function') {
+    if (typeof callback !== "function") {
       return;
     }
 
@@ -525,7 +569,7 @@ function createGraph(options) {
   }
 
   function forInIterator(callback) {
-    if (typeof callback !== 'function') {
+    if (typeof callback !== "function") {
       return;
     }
     var node;
@@ -586,16 +630,20 @@ function Link(fromId, toId, data, id) {
 }
 
 function hashCode(str) {
-  var hash = 0, i, chr, len;
+  var hash = 0,
+    i,
+    chr,
+    len;
   if (str.length == 0) return hash;
   for (i = 0, len = str.length; i < len; i++) {
-    chr   = str.charCodeAt(i);
-    hash  = ((hash << 5) - hash) + chr;
+    chr = str.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
     hash |= 0; // Convert to 32bit integer
   }
   return hash;
 }
 
 function makeLinkId(fromId, toId) {
-  return fromId.toString() + '👉 ' + toId.toString();
+  let sorted = [fromId, toId].sort();
+  return sorted[0].toString() + "⚯" + sorted[1].toString();
 }
