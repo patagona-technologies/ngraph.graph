@@ -389,7 +389,7 @@ function createGraph(options) {
     var linkId = makeLinkId(fromId, toId);
 
     var isMultiEdge = multiEdges.hasOwnProperty(linkId);
-    if (isMultiEdge || getLink(fromId, toId)) {
+    if (isMultiEdge || getLinkById(linkId)) {
       if (!isMultiEdge) {
         multiEdges[linkId] = 0;
       }
